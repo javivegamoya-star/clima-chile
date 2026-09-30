@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clima Concón</title>
+<style>
+  :root {
+    --bg: #0b1d2e;
+    --card: #12304a;
+    --card2: #173a58;
+    --text: #e8f1f8;
+    --muted: #9bb4c9;
+    --accent: #4fc3f7;
+    --warm: #ffb74d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, #0b1d2e 0%, #0e2a42 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  h1 { margin: 0; font-size: 1.8rem; }
+  h2 { font-size: 1.1rem; margin: 0 0 14px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; }
+  .hero .icon { font-size: 5rem; line-height: 1; }
+  .hero .temp { font-size: 4rem; font-weight: 700; }
+  .hero .desc { font-size: 1.2rem; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--card2); border-radius: 12px; padding: 14px; }
+  .stat .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .stat .value { font-size: 1.4rem; font-weight: 600; margin-top: 4px; }
+  .stat .sub { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+  .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .day { background: var(--card2); border-radius: 12px; padding: 14px; text-align: center; }
+  .day .name { font-weight: 600; }
+  .day .ic { font-size: 2.2rem; margin: 6px 0; }
+  .day .mx { color: var(--warm); font-weight: 700; }
+  .day .mn { color: var(--accent); }
+  .day .small { font-size: .8rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid rgba(255,255,255,.08); }
+  th { color: var(--muted); font-weight: 500; font-size: .85rem; }
+  .arrow { display: inline-block; transition: transform .3s; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .b-good { background: #2e7d32; } .b-ok { background: #f9a825; color: #222; } .b-big { background: #c62828; } .b-flat { background: #546e7a; }
+  #error { background: #c62828; padding: 14px; border-radius: 12px; display: none; margin-bottom: 18px; }
+  button { background: var(--accent); color: #062033; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+  .actions { display: flex; gap: 8px; align-items: center; }
+  .share { position: relative; }
+  .share-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; background: var(--card); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 6px; min-width: 240px; box-shadow: 0 8px 30px rgba(0,0,0,.4); display: flex; flex-direction: column; }
+  .share-menu[hidden] { display: none; }
+  .share-menu button { background: transparent; color: var(--text); text-align: left; font-weight: 500; padding: 10px 12px; }
+  .share-menu button:hover { background: var(--card2); }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: #263238; color: #fff; padding: 10px 18px; border-radius: 999px; box-shadow: 0 4px 20px rgba(0,0,0,.4); z-index: 20; max-width: 90vw; text-align: center; }
+  .toast[hidden] { display: none; }
+  .picker { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+  .picker label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; flex: 1 1 220px; }
+  .picker select { background: var(--card); color: var(--text); border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 12px; font-size: 1rem; }
+  .summary { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); }
+  .sum-title { font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: #bbdefb; margin-bottom: 8px; }
+  #sumText { color: var(--text); font-size: 1.05rem; line-height: 1.6; }
+  #sumText div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 520px) { #sumText div { white-space: normal; } }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 24px; }
+  @media (max-width: 520px) {
+    .hero { grid-template-columns: 1fr; text-align: center; }
+    .hero .temp { font-size: 3.2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="placeName">🌊 Concón, Chile</h1>
+      <div class="muted" id="updated">Cargando datos…</div>
+    </div>
+    <div class="actions">
+      <button onclick="loadAll()">↻ Actualizar</button>
+      <div class="share">
+        <button id="shareBtn" onclick="toggleShare(event)">📤 Compartir</button>
+        <div class="share-menu" id="shareMenu" hidden>
+          <button onclick="shareReport()">📝 Compartir reporte</button>
+          <button onclick="shareWhatsApp()">💬 Enviar por WhatsApp</button>
+          <button onclick="copyReport()">📋 Copiar reporte</button>
+          <button onclick="copyLink()">🔗 Copiar enlace a la página</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="picker">
+    <label>Región
+      <select id="selRegion"></select>
+    </label>
+    <label>Comuna costera
+      <select id="selComuna"></select>
+    </label>
+  </div>
+
+  <div id="error"></div>
+
+  <section class="card summary">
+    <div class="sum-title" id="sumTitle">Resumen</div>
+    <div id="sumText" class="muted">Cargando…</div>
+  </section>
+
+  <section class="card">
+    <h2>Ahora</h2>
+    <div class="hero">
+      <div class="icon" id="nowIcon">⏳</div>
+      <div>
+        <div class="temp" id="nowTemp">--°</div>
+        <div class="desc" id="nowDesc">—</div>
+        <div class="muted" id="nowFeels"></div>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:18px">
+      <div class="stat"><div class="label">Humedad</div><div class="value" id="nowHum">--</div></div>
+      <div class="stat"><div class="label">Presión</div><div class="value" id="nowPres">--</div></div>
+      <div class="stat"><div class="label">Nubosidad</div><div class="value" id="nowCloud">--</div></div>
+      <div class="stat"><div class="label">Precipitación</div><div class="value" id="nowRain">--</div></div>
+      <div class="stat"><div class="label">Índice UV (hoy)</div><div class="value" id="nowUV">--</div></div>
+      <div class="stat"><div class="label">Sol</div><div class="value" id="nowSun" style="font-size:1rem">--</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💨 Viento</h2>
+    <div class="grid">
+      <div class="stat"><div class="label">Velocidad</div><div class="value" id="windSpd">--</div><div class="sub" id="windBft"></div></div>
+      <div class="stat"><div class="label">Ráfagas</div><div class="value" id="windGust">--</div></div>
+      <div class="stat"><div class="label">Dirección</div><div class="value"><span class="arrow" id="windArrow">⬇</span> <span id="windDir">--</span></div><div class="sub">Viene desde</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>🏄 Reporte de olas</h2>
+    <div class="grid">
+      <div class="stat"><div class="label">Altura de ola</div><div class="value" id="waveH">--</div><div class="sub" id="waveBadge"></div></div>
+      <div class="stat"><div class="label">Periodo</div><div class="value" id="waveP">--</div></div>
+      <div class="stat"><div class="label">Dirección</div><div class="value"><span class="arrow" id="waveArrow">⬇</span> <span id="waveDir">--</span></div></div>
+      <div class="stat"><div class="label">Swell</div><div class="value" id="swellH">--</div><div class="sub" id="swellSub"></div></div>
+      <div class="stat"><div class="label">Mar de viento</div><div class="value" id="windWaveH">--</div></div>
+      <div class="stat"><div class="label">Temp. del mar</div><div class="value" id="sst">--</div></div>
+    </div>
+    <h2 style="margin-top:20px">Olas próximos días</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Día</th><th>Ola máx.</th><th>Periodo máx.</th><th>Dirección</th><th>Swell máx.</th><th>Condición</th></tr></thead>
+        <tbody id="waveTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>📅 Próximos días</h2>
+    <div class="days" id="days"></div>
+  </section>
+
+  <footer>Datos: Open-Meteo (pronóstico y modelo marino). Los datos de olas son pronóstico de mar abierto cerca de la costa; las condiciones en cada playa pueden variar.</footer>
+</div>
+
+<script>
+// Comunas costeras por región: [nombre, lat, lon]
+const REGIONES = {
+  "Arica y Parinacota": [["Arica", -18.48, -70.32]],
+  "Tarapacá": [["Iquique", -20.22, -70.15], ["Huara (Pisagua)", -19.60, -70.21]],
+  "Antofagasta": [["Tocopilla", -22.09, -70.20], ["Mejillones", -23.10, -70.45], ["Antofagasta", -23.65, -70.40], ["Taltal", -25.40, -70.48]],
+  "Atacama": [["Chañaral", -26.35, -70.62], ["Caldera", -27.07, -70.83], ["Huasco", -28.47, -71.22]],
+  "Coquimbo": [["La Higuera (Punta de Choros)", -29.25, -71.46], ["La Serena", -29.90, -71.27], ["Coquimbo", -29.95, -71.34], ["Coquimbo (Tongoy)", -30.25, -71.50], ["Los Vilos", -31.91, -71.51]],
+  "Valparaíso": [["Papudo", -32.51, -71.45], ["Zapallar", -32.55, -71.46], ["Puchuncaví (Maitencillo)", -32.65, -71.44], ["Quintero", -32.78, -71.53], ["Concón", -32.93, -71.52], ["Viña del Mar", -33.02, -71.55], ["Valparaíso", -33.05, -71.62], ["Casablanca (Quintay)", -33.19, -71.70], ["Algarrobo", -33.36, -71.67], ["El Quisco", -33.40, -71.70], ["El Tabo", -33.45, -71.67], ["Cartagena", -33.55, -71.61], ["San Antonio", -33.59, -71.62], ["Santo Domingo", -33.64, -71.63], ["Isla de Pascua", -27.15, -109.43], ["Juan Fernández", -33.64, -78.83]],
+  "O'Higgins": [["Navidad (Matanzas)", -33.96, -71.87], ["Pichilemu", -34.39, -72.00], ["Paredones (Bucalemu)", -34.64, -72.04]],
+  "Maule": [["Vichuquén (Llico)", -34.76, -72.08], ["Licantén (Iloca)", -34.93, -72.18], ["Constitución", -35.33, -72.42], ["Chanco", -35.73, -72.53], ["Pelluhue", -35.81, -72.57]],
+  "Ñuble": [["Cobquecura", -36.13, -72.79]],
+  "Biobío": [["Tomé", -36.62, -72.96], ["Penco", -36.74, -72.99], ["Talcahuano", -36.72, -73.12], ["Coronel", -37.03, -73.15], ["Lota", -37.09, -73.16], ["Arauco", -37.25, -73.32], ["Lebu", -37.61, -73.65], ["Tirúa", -38.34, -73.49]],
+  "La Araucanía": [["Saavedra", -38.78, -73.40], ["Toltén (Queule)", -39.39, -73.22]],
+  "Los Ríos": [["Mariquina (Mehuín)", -39.43, -73.22], ["Valdivia (Niebla)", -39.87, -73.40], ["Corral", -39.89, -73.43]],
+  "Los Lagos": [["San Juan de la Costa (Maicolpué)", -40.60, -73.75], ["Maullín", -41.62, -73.60], ["Puerto Montt", -41.47, -72.94], ["Calbuco", -41.77, -73.13], ["Ancud", -41.87, -73.83], ["Castro", -42.48, -73.76], ["Quellón", -43.12, -73.62], ["Chaitén", -42.92, -72.71]],
+  "Aysén": [["Cisnes (Puerto Cisnes)", -44.73, -72.68], ["Aysén", -45.40, -72.69]],
+  "Magallanes": [["Punta Arenas", -53.16, -70.91], ["Porvenir", -53.30, -70.37], ["Natales", -51.73, -72.51], ["Cabo de Hornos (Puerto Williams)", -54.93, -67.61]]
+};
+let LAT = -32.93, LON = -71.52, PLACE = "Concón";
+const TZ = "auto";   // hora local de cada comuna (Isla de Pascua y Magallanes tienen otro huso)
+
+function initPicker() {
+  const sr = $("selRegion"), sc = $("selComuna");
+  sr.innerHTML = Object.keys(REGIONES).map(r => `<option>${r}</option>`).join("");
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("clima-zona")); } catch (e) {}
+  // un enlace compartido (?region=…&comuna=…) manda sobre la última zona vista
+  const qp = new URLSearchParams(location.search);
+  if (qp.get("region") && REGIONES[qp.get("region")]) saved = { region: qp.get("region"), comuna: qp.get("comuna") };
+  const fillComunas = (region, comuna) => {
+    sc.innerHTML = REGIONES[region].map(c => `<option>${c[0]}</option>`).join("");
+    if (comuna && REGIONES[region].some(c => c[0] === comuna)) sc.value = comuna;
+  };
+  const region = saved && REGIONES[saved.region] ? saved.region : "Valparaíso";
+  sr.value = region;
+  fillComunas(region, saved ? saved.comuna : "Concón");
+  const apply = () => {
+    const c = REGIONES[sr.value].find(x => x[0] === sc.value);
+    [PLACE, LAT, LON] = c;
+    $("placeName").textContent = `🌊 ${PLACE}, ${sr.value}`;
+    document.title = `Clima ${PLACE}`;
+    try { localStorage.setItem("clima-zona", JSON.stringify({ region: sr.value, comuna: sc.value })); } catch (e) {}
+    try { history.replaceState(null, "", pageLink()); } catch (e) {}
+    loadAll();
+  };
+  sr.onchange = () => { fillComunas(sr.value); apply(); };
+  sc.onchange = apply;
+  apply();
+}
+
+// ---- Compartir ----
+let reportLines = [], reportTitle = "";
+const isHosted = () => location.protocol === "http:" || location.protocol === "https:";
+function pageLink() {
+  const u = new URL(location.href);
+  u.search = new URLSearchParams({ region: $("selRegion").value, comuna: $("selComuna").value }).toString();
+  u.hash = "";
+  return u.toString();
+}
+function reportText() {
+  const txt = [`🌊 Clima en ${PLACE} — ${reportTitle}`, ...reportLines];
+  if (isHosted()) txt.push("", "Ver reporte completo: " + pageLink());
+  return txt.join("\n");
+}
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 3500);
+}
+function toggleShare(ev) { ev.stopPropagation(); $("shareMenu").hidden = !$("shareMenu").hidden; }
+document.addEventListener("click", () => $("shareMenu").hidden = true);
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {   // respaldo para navegadores que no permiten el portapapeles
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+  }
+  toast(okMsg);
+}
+function ready() {
+  if (!reportLines.length) { toast("Espera a que carguen los datos…"); return false; }
+  return true;
+}
+async function shareReport() {
+  if (!ready()) return;
+  if (navigator.share) {
+    try { await navigator.share({ title: `Clima ${PLACE}`, text: reportText() }); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  copyReport();
+}
+function shareWhatsApp() {
+  if (!ready()) return;
+  window.open("https://wa.me/?text=" + encodeURIComponent(reportText()), "_blank");
+}
+function copyReport() {
+  if (!ready()) return;
+  copyText(reportText(), "Reporte copiado. Pégalo en WhatsApp, correo, etc.");
+}
+function copyLink() {
+  if (!isHosted()) {
+    toast("La página está solo en tu PC: súbela a internet para compartir el enlace. Por ahora usa “Compartir reporte”.");
+    return;
+  }
+  copyText(pageLink(), `Enlace a ${PLACE} copiado`);
+}
+
+// El modelo marino no cubre tierra ni aguas muy interiores: se busca el punto de mar con datos
+// más cercano a la comuna (anillos de 0.1°, 0.25° y 0.5°). Resultado en caché por comuna.
+const marineCache = {};
+async function findMarinePoint(lat, lon) {
+  const key = lat + "," + lon;
+  if (key in marineCache) return marineCache[key];
+  const pts = [[0, 0]];
+  for (const d of [0.1, 0.25, 0.5])
+    for (const [a, b] of [[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]]) pts.push([a * d, b * d]);
+  const la = pts.map(p => (lat + p[0]).toFixed(3)).join(","), lo = pts.map(p => (lon + p[1]).toFixed(3)).join(",");
+  const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${la}&longitude=${lo}&current=wave_height`);
+  if (!r.ok) throw new Error("Datos marinos: HTTP " + r.status);
+  const arr = await r.json();
+  const hit = arr.find(x => x.current && x.current.wave_height != null);
+  return marineCache[key] = hit ? [hit.latitude, hit.longitude] : null;
+}
+
+const WMO = {
+  0:["Despejado","☀️"],1:["Mayormente despejado","🌤️"],2:["Parcialmente nublado","⛅"],3:["Nublado","☁️"],
+  45:["Neblina","🌫️"],48:["Neblina con escarcha","🌫️"],
+  51:["Llovizna ligera","🌦️"],53:["Llovizna","🌦️"],55:["Llovizna intensa","🌧️"],
+  56:["Llovizna helada","🌧️"],57:["Llovizna helada intensa","🌧️"],
+  61:["Lluvia ligera","🌦️"],63:["Lluvia","🌧️"],65:["Lluvia intensa","🌧️"],
+  66:["Lluvia helada","🌧️"],67:["Lluvia helada intensa","🌧️"],
+  71:["Nieve ligera","🌨️"],73:["Nieve","🌨️"],75:["Nieve intensa","❄️"],77:["Granizo fino","🌨️"],
+  80:["Chubascos ligeros","🌦️"],81:["Chubascos","🌧️"],82:["Chubascos fuertes","⛈️"],
+  85:["Chubascos de nieve","🌨️"],86:["Chubascos de nieve fuertes","❄️"],
+  95:["Tormenta","⛈️"],96:["Tormenta con granizo","⛈️"],99:["Tormenta con granizo fuerte","⛈️"]
+};
+const wmo = c => WMO[c] || ["—","❔"];
+const DIRS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"];
+const dirName = d => d == null ? "--" : DIRS[Math.round(d / 22.5) % 16];
+const fmt = (v, dec = 0) => v == null || isNaN(v) ? "--" : Number(v).toFixed(dec);
+const dayName = (iso, i) => {
+  if (i === 0) return "Hoy";
+  if (i === 1) return "Mañana";
+  const d = new Date(iso + "T12:00:00");
+  const s = d.toLocaleDateString("es-CL", { weekday: "short", day: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+const beaufort = kmh => {
+  const t = [[1,"Calma"],[6,"Ventolina"],[12,"Brisa muy débil"],[20,"Brisa débil"],[29,"Brisa moderada"],[39,"Brisa fresca"],[50,"Brisa fuerte"],[62,"Viento fuerte"],[75,"Temporal"],[89,"Temporal fuerte"],[103,"Temporal duro"],[118,"Temporal muy duro"]];
+  for (const [lim, n] of t) if (kmh < lim) return n;
+  return "Huracán";
+};
+const waveCond = (h, p) => {
+  if (h == null) return ["--", "b-flat"];
+  if (h < 0.5) return ["Plano", "b-flat"];
+  if (h < 1.2) return [p >= 10 ? "Bueno (pequeño)" : "Pequeño", p >= 10 ? "b-good" : "b-ok"];
+  if (h < 2.5) return [p >= 10 ? "Muy bueno" : "Regular", p >= 10 ? "b-good" : "b-ok"];
+  return ["Grande / precaución", "b-big"];
+};
+const $ = id => document.getElementById(id);
+// arrow points where the wind/waves go (from direction + 180°); base glyph ⬇ points south (180°)
+const setArrow = (el, fromDeg) => { if (fromDeg != null) el.style.transform = `rotate(${fromDeg}deg)`; };
+
+let loadSeq = 0;
+async function loadAll() {
+  const seq = ++loadSeq;   // descarta respuestas viejas si se cambia de comuna rápido
+  reportLines = [];
+  $("error").style.display = "none";
+  $("updated").textContent = "Cargando datos…";
+  const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&timezone=${encodeURIComponent(TZ)}&forecast_days=7`
+    + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max,sunrise,sunset`
+    + `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m`;
+  const mUrl = (mlat, mlon) => `https://marine-api.open-meteo.com/v1/marine?latitude=${mlat}&longitude=${mlon}&timezone=${encodeURIComponent(TZ)}&forecast_days=7`
+    + `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature`
+    + `&daily=wave_height_max,wave_period_max,wave_direction_dominant,swell_wave_height_max`
+    + `&hourly=wave_height,wave_period,wave_direction`;
+
+  try {
+    const getMarine = async () => {
+      const p = await findMarinePoint(LAT, LON);
+      if (!p) return null;
+      const r = await fetch(mUrl(p[0], p[1]));
+      if (!r.ok) throw new Error("Datos marinos: HTTP " + r.status);
+      return r.json();
+    };
+    const [wr, m] = await Promise.all([fetch(wUrl), getMarine()]);
+    if (seq !== loadSeq) return;
+    if (!wr.ok) throw new Error("Pronóstico: HTTP " + wr.status);
+    const w = await wr.json();
+    if (seq !== loadSeq) return;
+    renderWeather(w);
+    renderSummary(w, m);
+    renderMarine(m);
+    const t = new Date(w.current.time);
+    $("updated").textContent = "Actualizado: " + t.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+  } catch (e) {
+    if (seq !== loadSeq) return;
+    $("error").textContent = "No se pudieron cargar los datos (" + e.message + "). Revisa tu conexión a internet.";
+    $("error").style.display = "block";
+    $("updated").textContent = "Error al cargar";
+  }
+}
+
+function renderWeather(w) {
+  const c = w.current, d = w.daily;
+  let [desc, icon] = wmo(c.weather_code);
+  if (!c.is_day && c.weather_code <= 1) icon = "🌙";
+  $("nowIcon").textContent = icon;
+  $("nowTemp").textContent = fmt(c.temperature_2m, 1) + "°C";
+  $("nowDesc").textContent = desc;
+  $("nowFeels").textContent = "Sensación térmica " + fmt(c.apparent_temperature, 1) + "°C · Máx " + fmt(d.temperature_2m_max[0]) + "° / Mín " + fmt(d.temperature_2m_min[0]) + "°";
+  $("nowHum").textContent = fmt(c.relative_humidity_2m) + "%";
+  $("nowPres").textContent = fmt(c.pressure_msl) + " hPa";
+  $("nowCloud").textContent = fmt(c.cloud_cover) + "%";
+  $("nowRain").textContent = fmt(c.precipitation, 1) + " mm";
+  $("nowUV").textContent = fmt(d.uv_index_max[0], 1);
+  const hm = s => s ? s.slice(11, 16) : "--";
+  $("nowSun").innerHTML = "🌅 " + hm(d.sunrise[0]) + "<br>🌇 " + hm(d.sunset[0]);
+
+  $("windSpd").textContent = fmt(c.wind_speed_10m) + " km/h";
+  $("windBft").textContent = beaufort(c.wind_speed_10m);
+  $("windGust").textContent = fmt(c.wind_gusts_10m) + " km/h";
+  $("windDir").textContent = dirName(c.wind_direction_10m) + " (" + fmt(c.wind_direction_10m) + "°)";
+  setArrow($("windArrow"), c.wind_direction_10m);
+
+  $("days").innerHTML = d.time.map((t, i) => {
+    const [ds, ic] = wmo(d.weather_code[i]);
+    return `<div class="day">
+      <div class="name">${dayName(t, i)}</div>
+      <div class="ic" title="${ds}">${ic}</div>
+      <div><span class="mx">${fmt(d.temperature_2m_max[i])}°</span> / <span class="mn">${fmt(d.temperature_2m_min[i])}°</span></div>
+      <div class="small">${ds}<br>💧 ${fmt(d.precipitation_probability_max[i])}% · ${fmt(d.precipitation_sum[i], 1)} mm<br>
+      💨 ${fmt(d.wind_speed_10m_max[i])} km/h ${dirName(d.wind_direction_10m_dominant[i])}<br>Ráfagas ${fmt(d.wind_gusts_10m_max[i])} km/h</div>
+    </div>`;
+  }).join("");
+}
+
+// Resumen: hasta las 18:00 se reporta hoy (desde la hora actual); desde las 18:01, mañana desde las 07:00.
+// Ventana diurna hasta las 20:00. La hora se toma de la API (hora de Chile), no del reloj del PC.
+function renderSummary(w, m) {
+  const now = w.current.time;                    // "YYYY-MM-DDTHH:MM" en America/Santiago
+  const today = now.slice(0, 10);
+  const mins = +now.slice(11, 13) * 60 + +now.slice(14, 16);
+  const isToday = mins <= 18 * 60;
+  const day = isToday ? today : w.daily.time[1];
+  const startH = isToday ? Math.max(7, +now.slice(11, 13)) : 7;
+  const endH = 20;
+  const inWin = t => t.slice(0, 10) === day && +t.slice(11, 13) >= startH && +t.slice(11, 13) <= endH;
+
+  const h = w.hourly;
+  const idx = h.time.map((t, i) => inWin(t) ? i : -1).filter(i => i >= 0);
+  const pick = (arr, ix) => ix.map(i => arr[i]).filter(v => v != null);
+  const temps = pick(h.temperature_2m, idx);
+  const winds = pick(h.wind_speed_10m, idx);
+  const gusts = pick(h.wind_gusts_10m, idx);
+  const pops = pick(h.precipitation_probability, idx);
+  const codes = pick(h.weather_code, idx);
+
+  // clima predominante: el código más frecuente; si hay lluvia en algún momento, se menciona
+  const freq = {};
+  codes.forEach(c => freq[c] = (freq[c] || 0) + 1);
+  const mainCode = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0];
+  const rainy = codes.some(c => c >= 51);
+  const popMax = pops.length ? Math.max(...pops) : null;
+
+  const meanDir = dirs => {
+    let x = 0, y = 0;
+    dirs.forEach(d => { x += Math.cos(d * Math.PI / 180); y += Math.sin(d * Math.PI / 180); });
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  };
+  const windDir = dirName(meanDir(pick(h.wind_direction_10m, idx)));
+  const iMaxWind = idx.reduce((a, i) => h.wind_speed_10m[i] > h.wind_speed_10m[a] ? i : a, idx[0]);
+
+  const label = isToday ? `Hoy${startH > 7 ? " (desde las " + String(startH).padStart(2, "0") + ":00)" : ""}` : "Mañana (desde las 07:00)";
+  const d = new Date(day + "T12:00:00").toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" });
+  $("sumTitle").textContent = `Resumen · ${label} · ${d}`;
+
+  if (!idx.length) { $("sumText").textContent = "Sin datos para el periodo."; return; }
+
+  // "a–b", o un solo valor si ambos coinciden al redondear
+  const range = (arr, dec) => {
+    const lo = fmt(Math.min(...arr), dec), hi = fmt(Math.max(...arr), dec);
+    return lo === hi ? lo : `${lo}–${hi}`;
+  };
+  const [desc, icon] = wmo(+mainCode);
+  const lines = [];
+  lines.push(`${icon} ${desc}, ${fmt(Math.min(...temps))}° a ${fmt(Math.max(...temps))}°C · lluvia ${fmt(popMax)}%${rainy && +mainCode < 51 ? " (posibles chubascos)" : ""}`);
+  lines.push(`💨 Viento ${windDir} ${range(winds, 0)} km/h (${beaufort(Math.max(...winds)).toLowerCase()}), más fuerte a las ${h.time[iMaxWind].slice(11, 16)} con ráfagas de ${fmt(Math.max(...gusts))} km/h`);
+
+  if (m && m.hourly) {
+    const mh = m.hourly;
+    const mi = mh.time.map((t, i) => inWin(t) ? i : -1).filter(i => i >= 0);
+    const wh = pick(mh.wave_height, mi), wp = pick(mh.wave_period, mi);
+    if (wh.length) {
+      const hMax = Math.max(...wh), pAvg = wp.reduce((a, b) => a + b, 0) / (wp.length || 1);
+      const [cond] = waveCond(hMax, pAvg);
+      lines.push(`🌊 Olas ${range(wh, 1)} m del ${dirName(meanDir(pick(mh.wave_direction, mi)))}, periodo ~${fmt(pAvg)} s · ${cond}`);
+    }
+  }
+  reportTitle = `${label}, ${d}`;
+  reportLines = lines;
+  $("sumText").innerHTML = lines.map(l => `<div title="${l}">${l}</div>`).join("");
+}
+
+function renderMarine(m) {
+  if (!m) {
+    ["waveH","waveP","waveDir","swellH","windWaveH","sst"].forEach(id => $(id).textContent = "--");
+    $("swellSub").textContent = "";
+    $("waveBadge").innerHTML = `<span class="badge b-flat">Sin datos</span>`;
+    $("waveTable").innerHTML = `<tr><td colspan="6">Sin datos de olas para esta zona (aguas interiores o canales no cubiertos por el modelo marino).</td></tr>`;
+    return;
+  }
+  const c = m.current, d = m.daily;
+  $("waveH").textContent = fmt(c.wave_height, 1) + " m";
+  const [cond, cls] = waveCond(c.wave_height, c.wave_period);
+  $("waveBadge").innerHTML = `<span class="badge ${cls}">${cond}</span>`;
+  $("waveP").textContent = fmt(c.wave_period, 1) + " s";
+  $("waveDir").textContent = dirName(c.wave_direction) + " (" + fmt(c.wave_direction) + "°)";
+  setArrow($("waveArrow"), c.wave_direction);
+  $("swellH").textContent = fmt(c.swell_wave_height, 1) + " m";
+  $("swellSub").textContent = fmt(c.swell_wave_period, 1) + " s · " + dirName(c.swell_wave_direction);
+  $("windWaveH").textContent = fmt(c.wind_wave_height, 1) + " m";
+  $("sst").textContent = fmt(c.sea_surface_temperature, 1) + " °C";
+
+  $("waveTable").innerHTML = d.time.map((t, i) => {
+    const [cn, cl] = waveCond(d.wave_height_max[i], d.wave_period_max[i]);
+    return `<tr><td>${dayName(t, i)}</td><td>${fmt(d.wave_height_max[i], 1)} m</td><td>${fmt(d.wave_period_max[i], 1)} s</td>
+      <td>${dirName(d.wave_direction_dominant[i])}</td><td>${fmt(d.swell_wave_height_max[i], 1)} m</td>
+      <td><span class="badge ${cl}">${cn}</span></td></tr>`;
+  }).join("");
+}
+
+initPicker();
+setInterval(loadAll, 30 * 60 * 1000);
+</script>
+</body>
+</html>
